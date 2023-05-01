@@ -18,6 +18,7 @@
 #define HC5652518_9A10_4AC2_9CAA_8AA2C066E922
 
 #include <mini_json/mini_json_value.h>
+#include <mini_json/mini_json_generator.h>
 #include <mini_json/mini_json_parser.h>
 
 #endif /* HC5652518_9A10_4AC2_9CAA_8AA2C066E922 */
