@@ -24,24 +24,78 @@
 
 namespace MiniJSON {
     
-/* thrown when a string value doesn't contains a valid UTF-8 sequence */
+/**
+ * @brief Thrown when a string value or an object key is not a valid UTF-8 string
+ * 
+ */
 class BadEncodingException : public std::exception {
 public:
+    /**
+     * @brief returns an explanatory string 
+     * 
+     * @return message
+     */
     const virtual char* what() const noexcept override {
         return "UTF-8 decoding Exception";
     }
 };
 
+/**
+ * @brief A JSON Document generator
+ * 
+ * This class is recursive so it will crash when trying to generate from a deeply recursive value.
+ * 
+ * The generator supports 2 forms : a compact representation or an indented representation.
+ * The resulting documents are UTF-8 encoded and are actually ASCII.
+ * 
+ * Floating points values are encoded with enough decimals to preserve the value.S
+ * 
+ * This class has no state, so all methods are static.
+ */
 class Generator {
 public:
-    /* produce a compact document from the value */
+    /**
+     * @brief Produce a compact document from the value
+     * 
+     * @param value JSON value
+     * @return JSON document
+     */
     static std::string to_string(const Value &value);
     /* Produce an intended document from the value */
+    /**
+     * @brief Produce an indented document from the value
+     * 
+     * @param value JSON value
+     * @param indent Number of spaces for the indentation
+     * @return JSON document
+     */
     static std::string to_string_pretty(const Value &value, unsigned int indent = 4);
 
 private:
+    /**
+     * @brief Escape everything we need or we want to escape from a string and enclose the result between double quotes.
+     * 
+     * In addiction to the required escaped characters, this method also protect :
+     * - all characters beween U+00FE and U+FFFF, with a single \\uXXXX sequence
+     * - all characters above U+FFFF using an UTF-16 surrogate pair
+     * 
+     * The use of the UTF-16 surrogate pair is not mandatory in the JSON specifications,
+     * so it may be incompatible with other implementations.
+     * 
+     * @param in string value or object key
+     * @return Escaped string, ready to print
+     */
     static std::string escape_string(const std::string &in);
     
+    /**
+     * @brief Recursive implementation of to_string_pretty
+     * 
+     * @param value Value to encode
+     * @param space A string containing spaces for the current indentation level
+     * @param add_space A string containing spaces added at each new level
+     * @param prefix A prefix to output between "spacee" and the value. This argument is used to hold an object key representation
+     * @return String representation of value
+     */
     static std::string to_string_pretty_priv(const Value &value, const std::string &space, const std::string &add_space, const std::string &prefix);
 };
 
@@ -94,11 +148,6 @@ inline std::string Generator::to_string_pretty_priv(const Value &value, const st
     throw std::exception();
 }
 
-/* Escape a string value
- * In addition to the required escaped characters :
- * - all characters between U+00FE and U+FFFF are escaped with a \uXXXX sequence
- * - characters above 0xFFFF are escaped with a surrogate UTF-16 pair
- */
 inline std::string Generator::escape_string(const std::string &in) {
     static const char *hex_encode = "0123456789ABCDEF";
     std::string out;
@@ -120,23 +169,23 @@ inline std::string Generator::escape_string(const std::string &in) {
 
         escape_len = 0;
 
-        if (cp == '\n') {
+        if (cp == '\n') {           // mandatory (<=0x1F)
             escape_seq[1] = 'n';
             escape_len = 2;
         }
-        else if (cp == '\r') {
+        else if (cp == '\r') {      // mandatory (<=0x1F)
             escape_seq[1] = 'r';
             escape_len = 2;
         }
-        else if (cp == '\t') {
+        else if (cp == '\t') {      // mandatory (<=0x1F)
             escape_seq[1] = 't';
             escape_len = 2;
         }
-        else if (cp == '\\') {
+        else if (cp == '\\') {      // mandatory
             escape_seq[1] = '\\';
             escape_len = 2;
         }
-        else if (cp == '"') {
+        else if (cp == '"') {       // mandatory
             escape_seq[1] = '"';
             escape_len = 2;
         }
@@ -182,6 +231,7 @@ inline std::string Generator::escape_string(const std::string &in) {
     return out;
 }
 
+/*This is a simpler version of escape_string_pretty_priv */
 inline std::string Generator::to_string(const Value &value) {
     switch (value.get_type()) {
     case Type::Null:

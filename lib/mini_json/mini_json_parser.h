@@ -25,43 +25,95 @@
 
 namespace MiniJSON {
 
+/**
+    * @brief Thrown when the input string is not a valid UTF-8 sequence
+    * 
+    */
 class UTF8Exception : public std::exception {
 public:
+    /**
+     * @brief returns an explanatory string 
+     * 
+     * @return message
+     */
     const virtual char* what() const noexcept override {
         return "Input is not a valid UTF-8 sequence";
     }
 };
 
+
+/**
+ * @brief Thrown when encountering a syntax error
+ * 
+ */
 class MalFormedException : public std::exception {
-    uint64_t m_line_number;
-    uint64_t m_line_pos;
     std::string m_msg;
 public:
-    MalFormedException(uint64_t ln, uint64_t lp, const std::string &info = {}) : m_line_number(ln), m_line_pos(lp), m_msg() {
-        m_msg = std::string("Format error line ") + std::to_string(m_line_number) + " at position " + std::to_string(m_line_pos);
+    /**
+     * @brief Build a new MalFormedException
+     * 
+     * @param ln line number
+     * @param lp line position
+     * @param info message
+     */
+    MalFormedException(uint64_t ln, uint64_t lp, const std::string &info = {}) : m_msg() {
+        m_msg = std::string("Format error line ") + std::to_string(ln) + " at position " + std::to_string(lp);
         if (!info.empty()) {
             m_msg += ": " + info;
         }
     }
 
+    /**
+     * @brief returns an explanatory string 
+     * 
+     * @return message
+     */
     const virtual char* what() const noexcept override {
         return m_msg.c_str();
     }
 };
 
+/**
+ * @brief Thrown when the recursion limit is reached
+ * 
+ */
 class MaximumDepthException : public std::exception {
 public:
+    /**
+     * @brief returns an explanatory string 
+     * 
+     * @return message
+     */
     const virtual char* what() const noexcept override {
         return "Maximum recursive depth reached";
     }
 };
 
+/**
+ * @brief A JSON Parser
+ * 
+ * This class is recursive. A maximum recursion depth can be set using setMaxDepth().
+ * 
+ * When parsing numbers, integer numbers will be parsed as an Int32, UInt32, Int64 or UInt64 depending
+ * on a value. Unsigned integers will allways use either UInt32 or UInt64. The smallest required size is used.
+ * 
+ * For floating point values, the parser always use a double representation.
+ */
 class Parser {
     public:
-    Parser() : m_sv(), m_line_number(0), m_line_pos(0), m_depth(0), m_max_depth(1024) {
+        /**
+         * @brief Construct a new parser
+         */
+        Parser() : m_sv(), m_line_number(0), m_line_pos(0), m_depth(0), m_max_depth(1024) {
     }
 
 
+    /**
+     * @brief Parse a document
+     * 
+     * @param input document, UTF-8 encoded
+     * @return JSON Value
+     */
     Value parse (const std::string &input) {
         init(input);
 
@@ -78,28 +130,48 @@ class Parser {
         Value v = read_value();
         eat_ws();
 
+        // if it's not the end of the document, then is malformed (only one top level value per doc)
         if (m_sv.size() != 0) {
-            malformed_exception("incorrect value");
+            malformed_exception("incorrect value (more than one top level value ?)");
         }
 
         return v;
     }
 
+    /**
+     * @brief Get the maximum recursion depth
+     * 
+     * Default to 1024
+     * 
+     * @return uint64_t
+     */
     uint64_t getMaxDepth() const {
         return m_max_depth;
     }
 
+    /**
+     * @brief Set the maximum recursion depth
+     * 
+     * Défault to 1024
+     * 
+     * @param maxDepth depth
+     */
     void setMaxDepth(uint64_t maxDepth) {
         m_max_depth = maxDepth;
     }
     
 private:
-    std::string_view m_sv;
-    uint64_t m_line_number;
-    uint64_t m_line_pos;
-    uint64_t m_depth;
-    uint64_t m_max_depth;
+    std::string_view m_sv;      ///< remaining input data
+    uint64_t m_line_number;     ///< current line number, from 1
+    uint64_t m_line_pos;        ///< current line position, from 0
+    uint64_t m_depth;           ///< current recursion depth
+    uint64_t m_max_depth;       ///< configured maximum recursion depth
 
+    /**
+     * @brief Initialize the parser for a new input
+     * 
+     * @param input input data
+     */
     void init(const std::string &input) {
         m_sv = std::string_view{input};
         m_line_number = 1;
@@ -107,6 +179,14 @@ private:
         m_depth = 0;
     }
 
+    /**
+     * @brief Get the next unicode codepoint, without advancing the stream
+     * 
+     * @param cp codepoint (output)
+     * @param consumed number of bytes read
+     * @return false at the end of stream
+     * @throws throws UTF8Exception if the stream is not valid
+     */
     bool pick_codepoint(uint32_t &cp, size_t &consumed) {
         if (m_sv.size() == 0) {
             return false;
@@ -119,6 +199,14 @@ private:
         return true;
     }
 
+    /**
+     * @brief Advance the stream, after using pick_codepoint
+     * 
+     * Also update the line number and line position
+     * 
+     * @param cp codepoint from the last call to pick_codepoint
+     * @param consumed number of bytes from the last call to pick_codepoint
+     */
     void advance_codepoint(uint32_t cp, size_t consumed) {
         m_sv.remove_prefix(consumed);
         if (cp == '\n') {
@@ -130,6 +218,16 @@ private:
         }
     }
 
+    
+    /**
+     * @brief Get the next unicode codepoint
+     * 
+     * Equivalent to calling pick_codepoint then advance_codepoint
+     * 
+     * @param cp codepoint
+     * @return false at the end of stream
+     * @throws throws UTF8Exception if the stream is not valid
+     */
     bool read_codepoint(uint32_t &cp) {
         size_t consumed;
         if (!pick_codepoint(cp, consumed)) {
@@ -139,10 +237,22 @@ private:
         return true;
     }
 
+    /**
+     * @brief Throws a MalFormedException
+     * 
+     * @param info message
+     * @throws MalFormedException
+     */
     [[ noreturn ]] void malformed_exception(const std::string &info = {}) {
         throw MalFormedException(m_line_number, m_line_pos, info);
     }
 
+    /**
+     * @brief Remove all the white space characters at the begining of the stream
+     * 
+     * @return number of chars removed
+     * @throws UTF8Exception
+     */
     size_t eat_ws() {
         uint32_t cp;
         size_t consumed;
@@ -161,6 +271,13 @@ private:
         }
     }
 
+    /**
+     * @brief Read a boolean "true" value from the stream
+     * 
+     * @return Value (boolean true)
+     * @throws MalFormedException
+     * @throws UTF8Exception
+     */
     Value read_boolean_true() {
         uint32_t cp;
         if (!read_codepoint(cp) || cp != 't') {
@@ -178,6 +295,13 @@ private:
         return Value(true);
     }
 
+    /**
+     * @brief Read a boolean "false" value from the stream
+     * 
+     * @return Value (boolean false)
+     * @throws MalFormedException
+     * @throws UTF8Exception
+     */
     Value read_boolean_false() {
         uint32_t cp;
         if (!read_codepoint(cp) || cp != 'f') {
@@ -198,6 +322,13 @@ private:
         return Value(false);
     }
 
+    /**
+     * @brief Read a "null" value from the stream
+     * 
+     * @return Value (null)
+     * @throws MalFormedException
+     * @throws UTF8Exception
+     */
     Value read_null() {
         uint32_t cp;
         if (!read_codepoint(cp) || cp != 'n') {
@@ -215,6 +346,15 @@ private:
         return Value();
     }
 
+    
+    /**
+     * @brief Parse an integer number
+     * 
+     * @param txt the text representation of the number, assumed to be valid
+     * @return Value (UInt32, Int32, UInt64 or Int64)
+     * @throws MalFormedException
+     * @throws UTF8Exception
+     */
     Value read_number_integer(const std::string &txt) {
         char *endptr = NULL;
 
@@ -241,6 +381,15 @@ private:
             return Value(uint64_t(v));
         }
     }
+    
+    /**
+     * @brief Parse an floating point number
+     * 
+     * @param txt the text representation of the number, assumed to be valid
+     * @return Value (Double)
+     * @throws MalFormedException
+     * @throws UTF8Exception
+     */
     Value read_number_floatingpoint(const std::string &txt) {
         char *endptr = NULL;
 
@@ -253,6 +402,15 @@ private:
         return Value(d);
     }
 
+    /**
+     * @brief Parse a JSON number
+     * 
+     * This method checks the syntax of the number and call either read_number_integer or read_number_floatingpoint.
+     * 
+     * @return Value (UInt32, Int32, UInt64, Int64 or Double)
+     * @throws MalFormedException
+     * @throws UTF8Exception
+     */
     Value read_number() {
         std::string buf;
         uint32_t cp;
@@ -374,6 +532,13 @@ private:
         return is_floatting_point ? read_number_floatingpoint(buf) : read_number_integer(buf);
     }
 
+    /**
+     * @brief Read a string from the string and unescape its content
+     * 
+     * @return UTF-8 string, fully decoded
+     * @throws MalFormedException
+     * @throws UTF8Exception
+     */
     std::string read_string_() {
         std::string ret;
         uint32_t cp, v;
@@ -487,10 +652,24 @@ private:
         return ret;
     }
 
+    /**
+     * @brief Read a string value from the stream
+     * 
+     * @return Value (String)
+     * @throws MalFormedException
+     * @throws UTF8Exception
+     */
     Value read_string() {
         return Value(read_string_());
     }
 
+    /**
+     * @brief Read a JSON array value from the stream
+     * 
+     * @return Value (Array)
+     * @throws MalFormedException
+     * @throws UTF8Exception
+     */
     Value read_array() {
         Value ret = Value::new_array();
         auto &array_content = ret.get<Type::Array>();
@@ -530,6 +709,13 @@ private:
         return ret;
     }
 
+    /**
+     * @brief Read a JSON obejct value from the stream
+     * 
+     * @return Value (Object)
+     * @throws MalFormedException
+     * @throws UTF8Exception
+     */
     Value read_object() {
         Value ret = Value::new_object();
         auto &object_content = ret.get<Type::Object>();
@@ -576,6 +762,14 @@ private:
         return ret;
     }
 
+    /**
+     * @brief Read a JSON value from the stream
+     * 
+     * @return Value
+     * @throws MalFormedException
+     * @throws MaximumDepthException
+     * @throws UTF8Exception
+     */
     Value read_value() {
         uint32_t cp;
         size_t consumed;
