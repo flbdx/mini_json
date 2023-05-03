@@ -363,6 +363,26 @@ public:
     bool keyExists(const std::string &key) const {
         return get<Type::Object>().count(key) != 0;
     }
+    
+    
+    /**
+     * @brief Assume the value is either an array, an object or a string and return its size
+     * 
+     * @return size of the string or number of elements of the array/object
+     * @throws std::bad_any_cast if this value is neither an array, an object or a string
+     */
+    size_t size() const {
+        switch (m_type) {
+            case Type::Array:
+                return get<Type::Array>().size();
+            case Type::Object:
+                return get<Type::Object>().size();
+            case Type::String:
+                return get<Type::String>().size();
+            default:
+                throw std::bad_any_cast();
+        }
+    }
 
 private:
     Type m_type;        ///< data type of this value
