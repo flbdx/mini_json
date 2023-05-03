@@ -328,6 +328,41 @@ public:
         typedef typename TypeToNative<dt>::type T;
         return std::any_cast<T>(&m_value);
     }
+    
+    /**
+     * @brief Assume the value is of type Object and access a value by its key.
+     * 
+     * @param key The key to retrieve
+     * @return Value
+     * @throws std::out_of_range if the key is not defined
+     * @throws std::bad_any_cast if this value is not an Object
+     */
+    const Value & operator[](const std::string &key) const {
+        return get<Type::Object>().at(key);
+    }
+    
+    /**
+     * @brief Assume the value is of type Object and access or insert a value by its key.
+     * 
+     * @param key The key to retrieve
+     * @return Value
+     * @throws std::out_of_range if the key is not defined
+     * @throws std::bad_any_cast if this value is not an Object
+     */
+    Value & operator[](const std::string &key) {
+        return get<Type::Object>()[key];
+    }
+    
+    /**
+     * @brief Assume the value is of type Object and test whether a key is defined
+     * 
+     * @param key The key to test
+     * @return true if the key is defined
+     * @throws std::bad_any_cast if this value is not an Object
+     */
+    bool keyExists(const std::string &key) const {
+        return get<Type::Object>().count(key) != 0;
+    }
 
 private:
     Type m_type;        ///< data type of this value
