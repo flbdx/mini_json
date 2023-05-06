@@ -276,10 +276,23 @@ public:
     /**
      * @brief equal operator
      * 
-     * @param o othjer value
-     * @return true if the data types and values are identical
+     * For numeric types, return true if the values are equal
+     * even if the data types are different.
+     * 
+     * @param o other value
+     * @return true if the values are identical
      */
     bool operator==(const Value &o) const;
+    
+    /**
+     * @brief != operator
+     * 
+     * @param o other value
+     * @return true if the values are different
+     */
+    bool operator!=(const Value &o) const {
+        return !operator==(o);
+    }
 
     /**
      * @brief Returns the type of the value

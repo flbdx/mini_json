@@ -4,13 +4,15 @@ OBJECTS_read_json = \
 	main_read_json.o
 OBJECTS_tester = \
 	main_tester.o
+OBJECTS_random_tester = \
+	main_random_tester.o
 
-OBJECTS=$(sort $(OBJECTS_create_json))
+OBJECTS=$(sort $(OBJECTS_create_json) $(OBJECTS_read_json) $(OBJECTS_tester) $(OBJECTS_random_tester))
 
 CPPFLAGS=-I../lib/
 CXXFLAGS+=-Wall -Wextra -std=c++17
 
-all: create_json read_json tester
+all: create_json read_json tester random_tester
 
 -include $(OBJECTS:.o=.d)
 
@@ -23,7 +25,9 @@ read_json: $(OBJECTS_read_json)
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(LDFLAGS) $(TARGET_ARCH) $^ $(LOADLIBES) $(LDLIBS) -o $@
 tester: $(OBJECTS_tester)
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(LDFLAGS) $(TARGET_ARCH) $^ $(LOADLIBES) $(LDLIBS) -o $@
-
+random_tester: $(OBJECTS_random_tester)
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(LDFLAGS) $(TARGET_ARCH) $^ $(LOADLIBES) $(LDLIBS) -o $@
+	
 clean:
-	rm -f $(OBJECTS) $(OBJECTS:.o=.d) create_json read_json
+	rm -f $(OBJECTS) $(OBJECTS:.o=.d) create_json read_json tester random_tester
 
