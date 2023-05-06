@@ -39,11 +39,11 @@ int main() {
         const Value &v = Parser().parse(document);
         
         
-        if (!v.keyExists("menu")) {
+        if (!v.contains("menu")) {
             return 1;
         }
         const Value &menu = v["menu"];
-        if (!(menu.keyExists("header") && menu.keyExists("items"))) {
+        if (!(menu.contains("header") && menu.contains("items"))) {
             return 1;
         }
         
@@ -54,7 +54,7 @@ int main() {
             if (item.get_type() == Type::Null) {
                 continue;
             }
-            if (item.keyExists("label")) {
+            if (item.contains("label")) {
                 std::cout << "- id=" << item["id"].get<Type::String>() << ", label=" << item["label"].get<Type::String>() << std::endl;
             }
             else {

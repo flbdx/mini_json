@@ -37,19 +37,35 @@ class Value;
  * @brief Type of the value stored in a Value object
  * 
  */
-enum Type {
-    Null,       ///< 'null', underlying type is void
-    Boolean,    ///< 'true' or 'false', underlying type is bool
-    UInt32,     ///< number, restricted to unsigned 32 bits values
-    Int32,      ///< number, restricted to signed 32 bits values
-    UInt64,     ///< number, restricted to unsigned 64 bits values
-    Int64,      ///< number, restricted to signed 64 bits values
-    Float,      ///< number, restricted to 32 bits floting point values
-    Double,     ///< number, restricted to 64 bits floting point values
-    String,     ///< string, underlying type is std::string
-    Object,     ///< object, underlying type is ObjectValues
-    Array       ///< array, underlying type is ArrayValues
+enum Type : unsigned int {
+    Null = 0,       ///< 'null', underlying type is void
+    Boolean = 1,    ///< 'true' or 'false', underlying type is bool
+    UInt32 = 0x102, ///< number, restricted to unsigned 32 bits values
+    Int32 = 0x103,  ///< number, restricted to signed 32 bits values
+    UInt64 = 0x104, ///< number, restricted to unsigned 64 bits values
+    Int64 = 0x105,  ///< number, restricted to signed 64 bits values
+    Float = 0x306,  ///< number, restricted to 32 bits floting point values
+    Double = 0x307, ///< number, restricted to 64 bits floting point values
+    String = 0x8,   ///< string, underlying type is std::string
+    Object = 0x409, ///< object, underlying type is ObjectValues
+    Array = 0x40A   ///< array, underlying type is ArrayValues
 };
+
+/**
+ * @brief A Type is a numeric type (integral or FP) if (type & MASK_TYPE_IS_NUMERIC) != 0
+ * 
+ */
+static constexpr unsigned int MASK_TYPE_IS_NUMERIC = 0x100;
+/**
+ * @brief A Type is a floating point type if (type & MASK_TYPE_IS_NUMERIC_FLOAT) != 0
+ * 
+ */
+static constexpr unsigned int MASK_TYPE_IS_NUMERIC_FLOAT = 0x200;
+/**
+ * @brief A Type is an array or an object if (type & MASK_TYPE_IS_CONTAINER) != 0
+ * 
+ */
+static constexpr unsigned int MASK_TYPE_IS_CONTAINER = 0x400;
 
 /**
  * @brief The underlying type of a Value representing a JSON object
@@ -360,7 +376,7 @@ public:
      * @return true if the key is defined
      * @throws std::bad_any_cast if this value is not an Object
      */
-    bool keyExists(const std::string &key) const {
+    bool contains(const std::string &key) const {
         return get<Type::Object>().count(key) != 0;
     }
     
@@ -402,10 +418,125 @@ private:
         const auto &vb = std::any_cast<const typename TypeToNative<dt>::type &>(b);
         return va == vb;
     }
+    
+    /**
+     * @brief Compare 2 numeric values (integral or floating point)
+     * 
+     * @param a Value of type Int32, UInt32, Int64, UInt64, Float or Double
+     * @param b Value of type Int32, UInt32, Int64, UInt64, Float or Double
+     * @return true if the two numeric values are equal
+     */
+    static bool numeric_equal(const Value &a, const Value &b);
 };
 
+inline bool Value::numeric_equal(const Value &a, const Value &b) {
+    // compare 2 numeric values, possibly having different types
+    
+    const auto type_is_float = [](const Type t) { return bool(t & MASK_TYPE_IS_NUMERIC_FLOAT); };
+    const auto get_sign = [](const Value &v) -> bool {
+        switch (v.m_type) {
+            case Type::Int32 : return v.get<Type::Int32>() < 0;
+            case Type::Int64 : return v.get<Type::Int64>() < 0;
+            case Type::Float : return v.get<Type::Float>() < 0;
+            case Type::Double : return v.get<Type::Double>() < 0;
+            default:
+                return false;
+        }
+    };
+    
+    // check whether they have the same sign
+    bool a_is_neg = get_sign(a);
+    bool b_is_neg = get_sign(b);
+    if (a_is_neg != b_is_neg) {
+        return false;
+    }
+    
+    bool a_is_float = type_is_float(a.m_type);
+    bool b_is_float = type_is_float(b.m_type);
+    
+    // both a and b have the same sign
+    
+    // if a and b are both either float or double
+    if (a_is_float && b_is_float) {
+        // upscale to double and compare
+        double va = (a.m_type == Type::Double) ? a.get<Type::Double>() : (double) a.get<Type::Float>();
+        double vb = (b.m_type == Type::Double) ? b.get<Type::Double>() : (double) b.get<Type::Float>();
+        return va == vb;
+    }
+    // if a and b are (u)int(32|64), having the same sign
+    else if (!(a_is_float || b_is_float)) {
+        if (a_is_neg) {
+            // both are negative, possible types are Int32 and Int64
+            int64_t va = (a.m_type == Type::Int32) ? a.get<Type::Int32>() : a.get<Type::Int64>();
+            int64_t vb = (b.m_type == Type::Int32) ? b.get<Type::Int32>() : b.get<Type::Int64>();
+            return va == vb;
+        }
+        else {
+            // both are positive
+            uint64_t va, vb;
+            switch (a.m_type) {
+                case Type::Int32: va = a.get<Type::Int32>(); break;
+                case Type::UInt32: va = a.get<Type::UInt32>(); break;
+                case Type::Int64: va = a.get<Type::Int64>(); break;
+                case Type::UInt64: va = a.get<Type::UInt64>(); break;
+                default: return false;
+            }
+            switch (b.m_type) {
+                case Type::Int32: vb = b.get<Type::Int32>(); break;
+                case Type::UInt32: vb = b.get<Type::UInt32>(); break;
+                case Type::Int64: vb = b.get<Type::Int64>(); break;
+                case Type::UInt64: vb = b.get<Type::UInt64>(); break;
+                default: return false;
+            }
+            return va == vb;
+        }
+    }
+    else {
+        // one floating point value, one integer value, both having the same sign
+        const auto &ra = (a_is_float) ? a : b;  // ra refers to the floating point value
+        const auto &rb = (a_is_float) ? b : a;  // rb refers to the integer value
+        
+        double va = (ra.m_type == Type::Float) ? ra.get<Type::Float>() : ra.get<Type::Double>();
+        
+        // ra needs to be an integral
+        bool ra_is_integral = (trunc(va) == va);
+        
+        if (!ra_is_integral) {
+            return false;
+        }
+        
+        // if ra is integral and positive
+        if (va >= 0.0 && va <= (double) std::numeric_limits<uint64_t>::max()) {
+            // cast to integer and check that we are not out of bounds
+            uint64_t ua = (uint64_t) trunc(va);
+            if (va != (double) ua) {
+                return false;
+            }
+            uint64_t vb = (rb.m_type == Type::UInt32) ? rb.get<Type::UInt32>() : rb.get<Type::UInt64>();
+            return va == vb;
+        }
+        else {
+            // ra is integral and negative
+            // cast to integer and check that we are not out of bounds
+            int64_t ia = (int64_t) trunc(va);
+            if (va != (double) ia) {
+                return false;
+            }
+            int64_t vb = (rb.m_type == Type::Int32) ? rb.get<Type::Int32>() : rb.get<Type::Int64>();
+            return va == vb;
+        }
+    }
+    
+    return false;
+}
+
 inline bool Value::operator==(const Value &o) const {
+    const auto type_is_numeric = [](const Type t) { return bool(t & MASK_TYPE_IS_NUMERIC); };
     if (m_type != o.m_type) {
+        // if the types are both numerics but different, do a "deep" comparison
+        if (type_is_numeric(m_type) && type_is_numeric(o.m_type)) {
+            return numeric_equal(*this, o);
+        }
         return false;
     }
     switch (m_type) {
