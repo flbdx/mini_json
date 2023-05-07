@@ -216,6 +216,12 @@ public:
      * @param o JSON value
      */
     Value(const Value &o) : m_type(o.m_type), m_value(o.m_value) {}
+    /**
+     * @brief Move constructor
+     * 
+     * @param o JSON value
+     */
+    Value(Value &&o) : m_type(o.m_type), m_value(std::move(o.m_value)) {}
     
     
     /**
@@ -227,6 +233,17 @@ public:
     Value & operator=(const Value &o) {
         m_type = o.m_type;
         m_value = o.m_value;
+        return *this;
+    }
+    /**
+     * @brief Move assignment operator
+     * 
+     * @param o JSON value
+     * @return reference to this
+     */
+    Value & operator=(Value &&o) {
+        m_type = o.m_type;
+        m_value = std::move(o.m_value);
         return *this;
     }
     
