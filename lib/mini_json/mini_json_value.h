@@ -26,6 +26,8 @@
 #include <list>
 #include <any>
 #include <exception>
+#include <initializer_list>
+#include <tuple>
 
 #include "utf_conv.h"
 
@@ -192,11 +194,22 @@ public:
      */
     Value(const std::string &v) : m_type(String), m_value(v) {}
     /**
-     * @brief Constructs a string JSON value
+     * @brief Constructs a NULL or string JSON value
      * 
-     * @param v value, must be UTF-8 encoded
+     * If v is not null, then v must be UTF-8 encoded
+     * 
+     * @param v if v is null, construct a NULL JSON value. Otherwise construct a string
      */
-    Value(const char *v) :  m_type(String), m_value(std::string(v)) {}
+    Value(const char *v) :  m_type(), m_value() {
+        if (v == nullptr) {
+            m_type = Null;
+            m_value.reset();
+        }
+        else {
+            m_type = String;
+            m_value = std::string(v);
+        }
+    }
     /**
      * @brief Constructs an object JSON value
      * 
@@ -209,6 +222,18 @@ public:
      * @param v value
      */
     Value(const ArrayValues &v): m_type(Array), m_value(v) {}
+    /**
+     * @brief Constructs an object JSON value
+     * 
+     * @param l list of (key, value) couples
+     */
+    Value(std::initializer_list<std::tuple<std::string, Value>> l) : m_type(Object), m_value(ObjectValues{})
+    {
+        auto &content = get<Object>();
+        for (auto &p : l) {
+            content[std::get<0>(p)] = std::get<1>(p);
+        }
+    }
 
     /**
      * @brief Copy constructor
@@ -255,13 +280,36 @@ public:
     static Value new_object() {
         return Value(ObjectValues{});
     }
+    /**
+     * @brief Returns a new JSON object value
+     * 
+     * @param l list of (key, value) couples
+     * @return JSON value
+     */
+    static Value new_object(std::initializer_list<std::tuple<std::string, Value>> l) {
+        return Value(l);
+    }
 
     /**
      * @brief Returns an empty JSON array value
      * 
      * @return JSON value
-     */    static Value new_array() {
+     */
+    static Value new_array() {
         return Value(ArrayValues{});
+    }
+    /**
+     * @brief Returns a new JSON array value
+     * 
+     * @param l list of values
+     * @return JSON value
+     */
+    static Value new_array(std::initializer_list<Value> l) {
+        Value ret = new_array();
+        for (auto & v : l) {
+            ret.get<Array>().push_back(v);
+        }
+        return ret;
     }
     
     /**
