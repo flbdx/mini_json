@@ -519,13 +519,20 @@ inline bool Value::numeric_equal(const Value &a, const Value &b) {
         }
         
         // if ra is integral and positive
-        if (va >= 0.0 && va <= (double) std::numeric_limits<uint64_t>::max()) {
+        if (va >= 0.0) {
             // cast to integer and check that we are not out of bounds
             uint64_t ua = (uint64_t) trunc(va);
             if (va != (double) ua) {
                 return false;
             }
-            uint64_t vb = (rb.m_type == Type::UInt32) ? rb.get<Type::UInt32>() : rb.get<Type::UInt64>();
+            uint64_t vb;
+            switch (rb.m_type) {
+                case Type::Int32: vb = rb.get<Type::Int32>(); break;
+                case Type::UInt32: vb = rb.get<Type::UInt32>(); break;
+                case Type::Int64: vb = rb.get<Type::Int64>(); break;
+                case Type::UInt64: vb = rb.get<Type::UInt64>(); break;
+                default: return false;
+            }
             return va == vb;
         }
         else {
