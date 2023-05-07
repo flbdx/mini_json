@@ -163,6 +163,18 @@ public:
      */
     Value(int64_t v) : m_type(Int64), m_value(v) {}
     /**
+     * @brief Constructs a number JSON value holding unsigned 64 bits integer values
+     * 
+     * @param v value
+     */
+    Value(unsigned int v) : m_type(UInt64), m_value(uint64_t(v)) {}
+    /**
+     * @brief Constructs a number JSON value holding signed 64 bits integer values
+     * 
+     * @param v value
+     */
+    Value(int v) : m_type(Int64), m_value(int64_t(v)) {}
+    /**
      * @brief Constructs a number JSON value holding 64 bits floating point values
      * 
      * @param v value, must not be infinity or NaN
