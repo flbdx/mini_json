@@ -103,11 +103,8 @@ inline std::string Generator::to_string_pretty_priv(const Value &value, const st
     switch (value.get_type()) {
     case Type::Null:
     case Type::Boolean:
-    case Type::UInt32:
-    case Type::Int32:
     case Type::UInt64:
     case Type::Int64:
-    case Type::Float:
     case Type::Double:
     case Type::String:
         return space + prefix + to_string(value);
@@ -238,20 +235,10 @@ inline std::string Generator::to_string(const Value &value) {
         return "null";
     case Type::Boolean:
         return value.get<Type::Boolean>() ? "true" : "false";
-    case Type::UInt32:
-        return std::to_string(value.get<Type::UInt32>());
-    case Type::Int32:
-        return std::to_string(value.get<Type::Int32>());
     case Type::UInt64:
         return std::to_string(value.get<Type::UInt64>());
     case Type::Int64:
         return std::to_string(value.get<Type::Int64>());
-    case Type::Float:
-    {
-        char buf[128];
-        snprintf(buf, sizeof(buf), "%.*g", FLT_DECIMAL_DIG, value.get<Type::Float>());
-        return buf;
-    }
     case Type::Double:
     {
         char buf[128];

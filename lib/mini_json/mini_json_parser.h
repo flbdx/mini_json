@@ -94,8 +94,8 @@ public:
  * 
  * This class is recursive. A maximum recursion depth can be set using setMaxDepth().
  * 
- * When parsing numbers, integer numbers will be parsed as an Int32, UInt32, Int64 or UInt64 depending
- * on a value. Unsigned integers will allways use either UInt32 or UInt64. The smallest required size is used.
+ * When parsing numbers, integer numbers will be parsed as an Int64 or UInt64 depending
+ * on the sign. Unsigned integers will allways use either UInt64.
  * 
  * For floating point values, the parser always use a double representation.
  */
@@ -351,7 +351,7 @@ private:
      * @brief Parse an integer number
      * 
      * @param txt the text representation of the number, assumed to be valid
-     * @return Value (UInt32, Int32, UInt64 or Int64)
+     * @return Value (UInt64 or Int64)
      * @throws MalFormedException
      * @throws UTF8Exception
      */
@@ -364,9 +364,6 @@ private:
             if (errno != 0 || endptr != txt.data() + txt.size()) {
                 malformed_exception("error while parsing an integer number");
             }
-            if (v <= INT32_MAX && v >= INT32_MIN) {
-                return Value(int32_t(v));
-            }
             return Value(int64_t(v));
         }
         else {
@@ -374,9 +371,6 @@ private:
             unsigned long long int v = strtoull(txt.c_str(), &endptr, 10);
             if (errno != 0 || endptr != txt.data() + txt.size()) {
                 malformed_exception("error while parsing an integer number");
-            }
-            if (v <= UINT32_MAX) {
-                return Value(uint32_t(v));
             }
             return Value(uint64_t(v));
         }
@@ -407,7 +401,7 @@ private:
      * 
      * This method checks the syntax of the number and call either read_number_integer or read_number_floatingpoint.
      * 
-     * @return Value (UInt32, Int32, UInt64, Int64 or Double)
+     * @return Value (UInt64, Int64 or Double)
      * @throws MalFormedException
      * @throws UTF8Exception
      */

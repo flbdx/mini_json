@@ -63,9 +63,8 @@ static void ex2() {
     root["null_value"] = Value();
     root["bool_true"] = true;
     root["bool_false"] = false;
-    root["int32_value"] = int32_t(-42);
+    root["int64_value"] = int64_t(-42);
     root["uint64_value"] = uint64_t(1)<<48;
-    root["float_value"] = float(1./7.);
     root["double_value"] = 1./7.;
     root["string_value 𝅘𝅥𝅮"] = "𝄆𝄠𝄢";
     root["empty_object"] = Value::new_object();

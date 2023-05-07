@@ -10,8 +10,6 @@
 /*
  * This is a tester program for the generator and parser.
  * It generates random JSON documents, parses them and compare the trees.
- * The generated JSON document don't use the Float data type, as the parser
- * always parse floating point values as Double.
  */
 
 
@@ -30,7 +28,7 @@ public:
     /**
      * @brief Generate a random JSON Value
      * 
-     * The generated document can be a single value or a complexe type.
+     * The generated document can be a single value or a complex type.
      * It will contains up to max_n_nodes values.
      * 
      * @param max_n_nodes maximum number of values in the document
@@ -111,24 +109,6 @@ private:
         return {};
     }
     
-    /**
-     * @brief Generate an unsigned 32 bits integer value 
-     * 
-     * @return Value
-     */
-    MiniJSON::Value gen_uint32() {
-        std::uniform_int_distribution<uint32_t> distrib(0);
-        return MiniJSON::Value(distrib(rng));
-    }
-    /**
-     * @brief Generate a signed 32 bits integer value 
-     * 
-     * @return Value
-     */
-    MiniJSON::Value gen_int32() {
-        std::uniform_int_distribution<int32_t> distrib(std::numeric_limits<int32_t>::min());
-        return MiniJSON::Value(distrib(rng));
-    }
     /**
      * @brief Generate an unsigned 64 bits integer value 
      * 
@@ -229,7 +209,7 @@ private:
      */
     MiniJSON::Value gen_something(bool top_level) {
         std::uniform_real_distribution fdistrib(0.);
-        std::uniform_int_distribution idistrib(0, 7);
+        std::uniform_int_distribution idistrib(0, 5);
         double r = fdistrib(rng);
         double base = top_level ? 0.4 : 0.20;
         if (r < base) {
@@ -246,14 +226,10 @@ private:
                 case 1:
                     return gen_boolean();
                 case 2:
-                    return gen_uint32();
-                case 3:
-                    return gen_int32();
-                case 4:
                     return gen_uint64();
-                case 5:
+                case 3:
                     return gen_int64();
-                case 6:
+                case 4:
                     return gen_double();
                 default:
                     return gen_string();

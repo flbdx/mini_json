@@ -40,15 +40,12 @@ class Value;
 enum Type : unsigned int {
     Null = 0,       ///< 'null', underlying type is void
     Boolean = 1,    ///< 'true' or 'false', underlying type is bool
-    UInt32 = 0x102, ///< number, restricted to unsigned 32 bits values
-    Int32 = 0x103,  ///< number, restricted to signed 32 bits values
-    UInt64 = 0x104, ///< number, restricted to unsigned 64 bits values
-    Int64 = 0x105,  ///< number, restricted to signed 64 bits values
-    Float = 0x306,  ///< number, restricted to 32 bits floting point values
-    Double = 0x307, ///< number, restricted to 64 bits floting point values
-    String = 0x8,   ///< string, underlying type is std::string
-    Object = 0x409, ///< object, underlying type is ObjectValues
-    Array = 0x40A   ///< array, underlying type is ArrayValues
+    UInt64 = 0x102, ///< number, restricted to unsigned 64 bits values
+    Int64 = 0x103,  ///< number, restricted to signed 64 bits values
+    Double = 0x304, ///< number, restricted to 64 bits floting point values
+    String = 0x5,   ///< string, underlying type is std::string
+    Object = 0x406, ///< object, underlying type is ObjectValues
+    Array = 0x407   ///< array, underlying type is ArrayValues
 };
 
 /**
@@ -93,14 +90,6 @@ template<> struct TypeToNative<Type::Null>    { typedef void type; /*!< Null dat
  */
 template<> struct TypeToNative<Type::Boolean> { typedef bool type; /*!< Boolean data type */};
 /**
- * @brief Specialization of TypeToNative for UInt32
- */
-template<> struct TypeToNative<Type::UInt32>  { typedef uint32_t type; /*!< unsigned 32 bits number data type */};
-/**
- * @brief Specialization of TypeToNative for Int32
- */
-template<> struct TypeToNative<Type::Int32>   { typedef int32_t type; /*!< signed 32 bits number data type */};
-/**
  * @brief Specialization of TypeToNative for UInt64
  */
 template<> struct TypeToNative<Type::UInt64>  { typedef uint64_t type; /*!< unsigned 64 bits number data type */};
@@ -108,10 +97,6 @@ template<> struct TypeToNative<Type::UInt64>  { typedef uint64_t type; /*!< unsi
  * @brief Specialization of TypeToNative for Int64
  */
 template<> struct TypeToNative<Type::Int64>   { typedef int64_t type; /*!< signed 64 bits number data type */};
-/**
- * @brief Specialization of TypeToNative for Float
- */
-template<> struct TypeToNative<Type::Float>   { typedef float type; /*!< 32 bits floating point number data type */};
 /**
  * @brief Specialization of TypeToNative for Double
  */
@@ -166,18 +151,6 @@ public:
      */
     Value(bool v) : m_type(Boolean), m_value(v) {}
     /**
-     * @brief Constructs a number JSON value holding unsigned 32 bits integer values
-     * 
-     * @param v value
-     */
-    Value(uint32_t v) : m_type(UInt32), m_value(v) {}
-    /**
-     * @brief Constructs a number JSON value holding signed 32 bits integer values
-     * 
-     * @param v value
-     */
-    Value(int32_t v) : m_type(Int32), m_value(v) {}
-    /**
      * @brief Constructs a number JSON value holding unsigned 64 bits integer values
      * 
      * @param v value
@@ -189,17 +162,6 @@ public:
      * @param v value
      */
     Value(int64_t v) : m_type(Int64), m_value(v) {}
-    /**
-     * @brief Constructs a number JSON value holding 32 bits floating point values
-     * 
-     * @param v value, must not be infinity or NaN
-     */
-    Value(float v) :
-        m_type(Float), m_value(v) {
-        if (!std::isfinite(v)) {
-            throw BadValueException();
-        }
-    }
     /**
      * @brief Constructs a number JSON value holding 64 bits floating point values
      * 
@@ -435,8 +397,8 @@ private:
     /**
      * @brief Compare 2 numeric values (integral or floating point)
      * 
-     * @param a Value of type Int32, UInt32, Int64, UInt64, Float or Double
-     * @param b Value of type Int32, UInt32, Int64, UInt64, Float or Double
+     * @param a Value of type Int64, UInt64 or Double
+     * @param b Value of type Int64, UInt64 or Double
      * @return true if the two numeric values are equal
      */
     static bool numeric_equal(const Value &a, const Value &b);
@@ -448,9 +410,7 @@ inline bool Value::numeric_equal(const Value &a, const Value &b) {
     const auto type_is_float = [](const Type t) { return bool(t & MASK_TYPE_IS_NUMERIC_FLOAT); };
     const auto get_sign = [](const Value &v) -> bool {
         switch (v.m_type) {
-            case Type::Int32 : return v.get<Type::Int32>() < 0;
             case Type::Int64 : return v.get<Type::Int64>() < 0;
-            case Type::Float : return v.get<Type::Float>() < 0;
             case Type::Double : return v.get<Type::Double>() < 0;
             default:
                 return false;
@@ -471,32 +431,24 @@ inline bool Value::numeric_equal(const Value &a, const Value &b) {
     
     // if a and b are both either float or double
     if (a_is_float && b_is_float) {
-        // upscale to double and compare
-        double va = (a.m_type == Type::Double) ? a.get<Type::Double>() : (double) a.get<Type::Float>();
-        double vb = (b.m_type == Type::Double) ? b.get<Type::Double>() : (double) b.get<Type::Float>();
-        return va == vb;
+        // cast to double and compare
+        return a.get<Type::Double>() == b.get<Type::Double>();
     }
     // if a and b are (u)int(32|64), having the same sign
     else if (!(a_is_float || b_is_float)) {
         if (a_is_neg) {
-            // both are negative, possible types are Int32 and Int64
-            int64_t va = (a.m_type == Type::Int32) ? a.get<Type::Int32>() : a.get<Type::Int64>();
-            int64_t vb = (b.m_type == Type::Int32) ? b.get<Type::Int32>() : b.get<Type::Int64>();
-            return va == vb;
+            // both are negative, only possible type is Int64
+            return a.get<Type::Int64>() == b.get<Type::Int64>();
         }
         else {
             // both are positive
             uint64_t va, vb;
             switch (a.m_type) {
-                case Type::Int32: va = a.get<Type::Int32>(); break;
-                case Type::UInt32: va = a.get<Type::UInt32>(); break;
                 case Type::Int64: va = a.get<Type::Int64>(); break;
                 case Type::UInt64: va = a.get<Type::UInt64>(); break;
                 default: return false;
             }
             switch (b.m_type) {
-                case Type::Int32: vb = b.get<Type::Int32>(); break;
-                case Type::UInt32: vb = b.get<Type::UInt32>(); break;
                 case Type::Int64: vb = b.get<Type::Int64>(); break;
                 case Type::UInt64: vb = b.get<Type::UInt64>(); break;
                 default: return false;
@@ -509,7 +461,7 @@ inline bool Value::numeric_equal(const Value &a, const Value &b) {
         const auto &ra = (a_is_float) ? a : b;  // ra refers to the floating point value
         const auto &rb = (a_is_float) ? b : a;  // rb refers to the integer value
         
-        double va = (ra.m_type == Type::Float) ? ra.get<Type::Float>() : ra.get<Type::Double>();
+        double va = ra.get<Type::Double>();
         
         // ra needs to be an integral
         bool ra_is_integral = (trunc(va) == va);
@@ -527,8 +479,6 @@ inline bool Value::numeric_equal(const Value &a, const Value &b) {
             }
             uint64_t vb;
             switch (rb.m_type) {
-                case Type::Int32: vb = rb.get<Type::Int32>(); break;
-                case Type::UInt32: vb = rb.get<Type::UInt32>(); break;
                 case Type::Int64: vb = rb.get<Type::Int64>(); break;
                 case Type::UInt64: vb = rb.get<Type::UInt64>(); break;
                 default: return false;
@@ -542,7 +492,7 @@ inline bool Value::numeric_equal(const Value &a, const Value &b) {
             if (va != (double) ia) {
                 return false;
             }
-            int64_t vb = (rb.m_type == Type::Int32) ? rb.get<Type::Int32>() : rb.get<Type::Int64>();
+            int64_t vb = rb.get<Type::Int64>();
             return va == vb;
         }
     }
@@ -564,16 +514,10 @@ inline bool Value::operator==(const Value &o) const {
         return true;
     case Type::Boolean:
         return value_equal<Type::Boolean>(m_value, o.m_value);
-    case Type::UInt32:
-        return value_equal<Type::UInt32>(m_value, o.m_value);
-    case Type::Int32:
-        return value_equal<Type::Int32>(m_value, o.m_value);
     case Type::UInt64:
         return value_equal<Type::UInt64>(m_value, o.m_value);
     case Type::Int64:
         return value_equal<Type::Int64>(m_value, o.m_value);
-    case Type::Float:
-        return value_equal<Type::Float>(m_value, o.m_value);
     case Type::Double:
         return value_equal<Type::Double>(m_value, o.m_value);
     case Type::String:
