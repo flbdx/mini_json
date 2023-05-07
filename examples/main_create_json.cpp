@@ -2,7 +2,6 @@
 
 #include <mini_json/mini_json.h>
 
-static void ex1() {
 // {
 //     "glossary": {
 //         "title": "example glossary",
@@ -25,7 +24,7 @@ static void ex1() {
 //         }
 //     }
 // }
-    
+static MiniJSON::Value ex1() {   
     using namespace MiniJSON;
       
     Value root = Value::new_object();
@@ -53,10 +52,40 @@ static void ex1() {
     
     glossEntry["GlossSee"] = "markup";
     
-    std::cout << Generator::to_string_pretty(root) << std::endl;
+    return root;
 }
 
-static void ex2() {
+static MiniJSON::Value ex2()
+{
+    using namespace MiniJSON;
+    
+    Value root = {
+        {"glossary", {
+            {"title", "example glossary"},
+            {"GlossDiv", {
+                {"title", "S"},
+                {"GlossList", {
+                    {"GlossEntry", {
+                        {"ID", "SGML"},
+                        {"SortAs", "SGML"},
+                        {"GlossTerm", "Standard Generalized Markup Language"},
+                        {"Acronym", "SGML"},
+                        {"Abbrev", "ISO 8879:1986"},
+                        {"GlossDef", {
+                            {"para", "A meta-markup language, used to create markup languages such as DocBook."},
+                            {"GlossSeeAlso", ArrayValues{"GML", "XML"}}
+                        }},
+                        {"GlossSee", "markup"}
+                    }}
+                }}
+            }}
+        }}
+    };
+
+    return root;
+}
+
+static MiniJSON::Value ex3() {
     using namespace MiniJSON;
     
     Value root = Value::new_object();
@@ -70,10 +99,36 @@ static void ex2() {
     root["empty_object"] = Value::new_object();
     root["empty_array"] = Value::new_array();
     
-    std::cout << Generator::to_string_pretty(root) << std::endl;
+    return root;
+}
+
+static MiniJSON::Value ex4() {
+    using namespace MiniJSON;
+    
+    Value root = {
+        {"null_value", nullptr},
+        {"bool_true", true},
+        {"bool_false", false},
+        {"int64_value", int64_t(-42)},
+        {"uint64_value", uint64_t(1)<<48},
+        {"double_value", 1./7.},
+        {"string_value 𝅘𝅥𝅮", "𝄆𝄠𝄢"},
+        {"empty_object", ObjectValues{}},
+        {"empty_array", ArrayValues{}}
+    };
+
+    return root;
 }
 
 int main() {
-    ex1();
-    ex2();
+    MiniJSON::Value v1 = ex1();
+    MiniJSON::Value v2 = ex2();
+    MiniJSON::Value v3 = ex3();
+    MiniJSON::Value v4 = ex4();
+    std::cout << MiniJSON::Generator::to_string_pretty(v1) << std::endl;
+    std::cout << MiniJSON::Generator::to_string_pretty(v2) << std::endl;
+    std::cout << "v1 == v2 ? " << bool(v1 == v2) << std::endl;
+    std::cout << MiniJSON::Generator::to_string_pretty(v3) << std::endl;
+    std::cout << MiniJSON::Generator::to_string_pretty(v4) << std::endl;
+    std::cout << "v3 == v4 ? " << bool(v3 == v4) << std::endl;
 }
