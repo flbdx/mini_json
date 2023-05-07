@@ -250,15 +250,15 @@ int main() {
         std::string doc = Generator::to_string(json);
         Value o = parser.parse(doc);
         if (json != o) {
-            puts(Generator::to_string(json).c_str());
-            puts(Generator::to_string(o).c_str());
+            puts(json.to_string().c_str());
+            puts(o.to_string().c_str());
             break;
         }
         doc = Generator::to_string_pretty(json);
         o = parser.parse(doc);
         if (o != json) { // symmetric...
-            puts(Generator::to_string(json).c_str());
-            puts(Generator::to_string(o).c_str());
+            puts(json.to_string().c_str());
+            puts(o.to_string().c_str());
             break;
         }
     }

@@ -125,10 +125,10 @@ int main() {
     MiniJSON::Value v2 = ex2();
     MiniJSON::Value v3 = ex3();
     MiniJSON::Value v4 = ex4();
-    std::cout << MiniJSON::Generator::to_string_pretty(v1) << std::endl;
-    std::cout << MiniJSON::Generator::to_string_pretty(v2) << std::endl;
+    std::cout << v1.to_string(2) << std::endl;
+    std::cout << v2.to_string(2) << std::endl;
     std::cout << "v1 == v2 ? " << bool(v1 == v2) << std::endl;
-    std::cout << MiniJSON::Generator::to_string_pretty(v3) << std::endl;
-    std::cout << MiniJSON::Generator::to_string_pretty(v4) << std::endl;
+    std::cout << v3.to_string(4) << std::endl;
+    std::cout << v4.to_string(4) << std::endl;
     std::cout << "v3 == v4 ? " << bool(v3 == v4) << std::endl;
 }

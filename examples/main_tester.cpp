@@ -20,7 +20,7 @@ int main(int argc, char **argv)
         Parser parser;
         try {
             Value v = parser.parse(data);
-            puts(Generator::to_string(v).c_str());
+            puts(v.to_string().c_str());
             return 0;
         } catch (std::exception &e) {
             fprintf(stderr, "%s\n", e.what());

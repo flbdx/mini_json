@@ -18,6 +18,7 @@
 #define H16B861EE_DE73_445A_9722_3184BA3BDA77
 
 #include <mini_json/mini_json_value.h>
+#include <mini_json/mini_json_generator.h>
 
 namespace MiniJSON {
 
@@ -145,6 +146,14 @@ inline bool Value::operator==(const Value &o) const {
         return value_equal<Type::Array>(m_value, o.m_value);
     }
     return false;
+}
+
+inline std::string Value::to_string() const {
+    return Generator::to_string(*this);
+}
+
+inline std::string Value::to_string(int indent) const {
+    return Generator::to_string_pretty(*this, indent);
 }
 
 }

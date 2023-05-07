@@ -451,6 +451,21 @@ public:
                 throw std::bad_any_cast();
         }
     }
+    
+    /**
+     * @brief Return a compact string representation of this document
+     * 
+     * @return Document
+     */
+    std::string to_string() const;
+    
+    /**
+     * @brief Return an indented string representation of this document
+     * 
+     * @param indent indentation width
+     * @return Document
+     */
+    std::string to_string(int indent) const;
 
 private:
     Type m_type;        ///< data type of this value
