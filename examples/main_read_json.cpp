@@ -2,8 +2,7 @@
 
 #include <mini_json/mini_json.h>
 
-static std::string document = R"MARKER(
-{"menu": {
+static std::string document = R"MARKER({"menu": {
     "header": "SVG Viewer",
     "items": [
         {"id": "Open"},
@@ -35,6 +34,14 @@ static std::string document = R"MARKER(
 int main() {
     using namespace MiniJSON;
     
+    auto position_to_string = [](Position p) -> std::string {
+        std::string s;
+        s += "(line number: " + std::to_string(p.m_line_number) + ", ";
+        s += "line position: " + std::to_string(p.m_line_pos) + ", ";
+        s += "offset: " + std::to_string(p.m_offset) + ")";
+        return s;
+    };
+    
     try {
         const Value &v = Parser().parse(document);
         
@@ -55,10 +62,10 @@ int main() {
                 continue;
             }
             if (item.contains("label")) {
-                std::cout << "- id=" << item["id"].get<Type::String>() << ", label=" << item["label"].get<Type::String>() << std::endl;
+                std::cout << "- id=" << item["id"].get<Type::String>() << ", label=" << item["label"].get<Type::String>() << ", position=" + position_to_string(item.get_position()) << std::endl;
             }
             else {
-                std::cout << "- id=" << item["id"].get<Type::String>() << std::endl;
+                std::cout << "- id=" << item["id"].get<Type::String>() << ", position=" + position_to_string(item.get_position()) << std::endl;
             }
         }
     }
