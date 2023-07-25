@@ -61,12 +61,13 @@ inline bool Parser::pick_codepoint(uint32_t &cp, size_t &consumed) {
 inline void Parser::advance_codepoint(uint32_t cp, size_t consumed) {
     m_sv.remove_prefix(consumed);
     if (cp == '\n') {
-        ++m_line_number;
-        m_line_pos = 1;
+        ++m_position.m_line_number;
+        m_position.m_line_pos = 1;
     }
     else {
-        ++m_line_pos;
+        ++m_position.m_line_pos;
     }
+    ++m_position.m_offset;
 }
 
 inline bool Parser::read_codepoint(uint32_t &cp) {
@@ -79,7 +80,7 @@ inline bool Parser::read_codepoint(uint32_t &cp) {
 }
 
 [[ noreturn ]] inline void Parser::malformed_exception(const std::string &info) {
-    throw MalFormedException(m_line_number, m_line_pos, info);
+    throw MalFormedException(m_position, info);
 }
 
 inline size_t Parser::eat_ws() {
@@ -102,6 +103,7 @@ inline size_t Parser::eat_ws() {
 
 inline Value Parser::read_boolean_true() {
     uint32_t cp;
+    const Position p = m_position;
     if (!read_codepoint(cp) || cp != 't') {
         malformed_exception("expected \"true\"");
     }
@@ -114,11 +116,12 @@ inline Value Parser::read_boolean_true() {
     if (!read_codepoint(cp) || cp != 'e') {
         malformed_exception("expected \"true\"");
     }
-    return Value(true);
+    return Value(true, p);
 }
 
 inline Value Parser::read_boolean_false() {
     uint32_t cp;
+    const Position p = m_position;
     if (!read_codepoint(cp) || cp != 'f') {
         malformed_exception("expected \"false\"");
     }
@@ -134,11 +137,12 @@ inline Value Parser::read_boolean_false() {
     if (!read_codepoint(cp) || cp != 'e') {
         malformed_exception("expected \"false\"");
     }
-    return Value(false);
+    return Value(false, p);
 }
 
 inline Value Parser::read_null() {
     uint32_t cp;
+    const Position p = m_position;
     if (!read_codepoint(cp) || cp != 'n') {
         malformed_exception("expected \"null\"");
     }
@@ -151,12 +155,13 @@ inline Value Parser::read_null() {
     if (!read_codepoint(cp) || cp != 'l') {
         malformed_exception("expected \"null\"");
     }
-    return Value();
+    return Value(p);
 }
 
 
 inline Value Parser::read_number_integer(const std::string &txt) {
     char *endptr = NULL;
+    const Position p = m_position;
 
     if (txt.front() == '-') {
         errno = 0;
@@ -164,7 +169,7 @@ inline Value Parser::read_number_integer(const std::string &txt) {
         if (errno != 0 || endptr != txt.data() + txt.size()) {
             malformed_exception("error while parsing an integer number");
         }
-        return Value(int64_t(v));
+        return Value(int64_t(v), p);
     }
     else {
         errno = 0;
@@ -172,12 +177,13 @@ inline Value Parser::read_number_integer(const std::string &txt) {
         if (errno != 0 || endptr != txt.data() + txt.size()) {
             malformed_exception("error while parsing an integer number");
         }
-        return Value(uint64_t(v));
+        return Value(uint64_t(v), p);
     }
 }
 
 inline Value Parser::read_number_floatingpoint(const std::string &txt) {
     char *endptr = NULL;
+    const Position p = m_position;
 
     errno = 0;
     double d = strtod(txt.c_str(), &endptr);
@@ -185,7 +191,7 @@ inline Value Parser::read_number_floatingpoint(const std::string &txt) {
         malformed_exception("error while parsing a floating-point number");
     }
 
-    return Value(d);
+    return Value(d, p);
 }
 
 inline Value Parser::read_number() {
@@ -423,11 +429,13 @@ inline std::string Parser::read_string_() {
 }
 
 inline Value Parser::read_string() {
-    return Value(read_string_());
+    const Position p = m_position;
+    return Value(read_string_(), p);
 }
 
 inline Value Parser::read_array() {
     Value ret = Value::new_array();
+    ret.set_position(m_position);
     auto &array_content = ret.get<Type::Array>();
 
     uint32_t cp;
@@ -467,6 +475,7 @@ inline Value Parser::read_array() {
 
 inline Value Parser::read_object() {
     Value ret = Value::new_object();
+    ret.set_position(m_position);
     auto &object_content = ret.get<Type::Object>();
 
     uint32_t cp;

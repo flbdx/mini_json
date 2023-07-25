@@ -134,6 +134,31 @@ public:
 };
 
 /**
+ * @brief Represents a position in a text stream
+ * 
+ * This structure is used to store the position at which a JSON value was parsed
+ */
+struct Position {
+    uint64_t m_line_number;     ///< current line number, from 1
+    uint64_t m_line_pos;        ///< current line position, from 1
+    uint64_t m_offset;          ///< current offset in input stream, from 0
+    
+    /**
+     * @brief Construct an invalid Position
+     */
+    Position() : m_line_number(0), m_line_pos(0), m_offset(0) {}
+    
+    /**
+     * @brief Construct a position
+     * 
+     * @param ln line number, starting from 1
+     * @param lp line position, starting from 1
+     * @param o file offset, starting from 0
+     */
+    Position(uint64_t ln, uint64_t lp, uint64_t o): m_line_number(ln), m_line_pos(lp), m_offset(o) {}
+};
+
+/**
  * @brief A JSON Value
  * 
  * The Value objects have two member variables : m_type, holding its data type, and m_value, a std::any holding the content.
@@ -145,44 +170,56 @@ public:
      * @brief Constructs a null JSON value
      * 
      */
-    Value() : m_type(Null), m_value() {}
+    Value() : m_type(Null), m_value(), m_position() {}
+    /**
+     * @brief Constructs a null JSON value
+     * 
+     * @param p Position in stream
+     */
+    explicit Value(Position p) : m_type(Null), m_value(), m_position(p) {}
     /**
      * @brief Constructs a boolean JSON value
      * 
      * @param v value
+     * @param p Position in stream
      */
-    Value(bool v) : m_type(Boolean), m_value(v) {}
+    Value(bool v, Position p = {}) : m_type(Boolean), m_value(v), m_position(p) {}
     /**
      * @brief Constructs a number JSON value holding unsigned 64 bits integer values
      * 
      * @param v value
+     * @param p Position in stream
      */
-    Value(uint64_t v) : m_type(UInt64), m_value(v) {}
+    Value(uint64_t v, Position p = {}) : m_type(UInt64), m_value(v), m_position(p) {}
     /**
      * @brief Constructs a number JSON value holding signed 64 bits integer values
      * 
      * @param v value
+     * @param p Position in stream
      */
-    Value(int64_t v) : m_type(Int64), m_value(v) {}
+    Value(int64_t v, Position p = {}) : m_type(Int64), m_value(v), m_position(p) {}
     /**
      * @brief Constructs a number JSON value holding unsigned 64 bits integer values
      * 
      * @param v value
+     * @param p Position in stream
      */
-    Value(unsigned int v) : m_type(UInt64), m_value(uint64_t(v)) {}
+    Value(unsigned int v, Position p = {}) : m_type(UInt64), m_value(uint64_t(v)), m_position(p) {}
     /**
      * @brief Constructs a number JSON value holding signed 64 bits integer values
      * 
      * @param v value
+     * @param p Position in stream
      */
-    Value(int v) : m_type(Int64), m_value(int64_t(v)) {}
+    Value(int v, Position p = {}) : m_type(Int64), m_value(int64_t(v)), m_position(p) {}
     /**
      * @brief Constructs a number JSON value holding 64 bits floating point values
      * 
      * @param v value, must not be infinity or NaN
+     * @param p Position in stream
      */
-    Value(double v) :
-        m_type(Double), m_value(v) {
+    Value(double v, Position p = {}) :
+        m_type(Double), m_value(v), m_position(p) {
         if (!std::isfinite(v)) {
             throw BadValueException();
         }
@@ -191,16 +228,18 @@ public:
      * @brief Constructs a string JSON value
      * 
      * @param v value, must be UTF-8 encoded
+     * @param p Position in stream
      */
-    Value(const std::string &v) : m_type(String), m_value(v) {}
+    Value(const std::string &v, Position p = {}) : m_type(String), m_value(v), m_position(p) {}
     /**
      * @brief Constructs a NULL or string JSON value
      * 
      * If v is not null, then v must be UTF-8 encoded
      * 
      * @param v if v is null, construct a NULL JSON value. Otherwise construct a string
+     * @param p Position in stream
      */
-    Value(const char *v) :  m_type(), m_value() {
+    Value(const char *v, Position p = {}) :  m_type(), m_value(), m_position(p) {
         if (v == nullptr) {
             m_type = Null;
             m_value.reset();
@@ -214,20 +253,22 @@ public:
      * @brief Constructs an object JSON value
      * 
      * @param v value, the keys must be UTF-8 encoded
+     * @param p Position in stream
      */
-    Value(const ObjectValues &v) : m_type(Object), m_value(v) {}
+    Value(const ObjectValues &v, Position p = {}) : m_type(Object), m_value(v), m_position(p) {}
     /**
      * @brief Constructs an array JSON value
      * 
      * @param v value
+     * @param p Position in stream
      */
-    Value(const ArrayValues &v): m_type(Array), m_value(v) {}
+    Value(const ArrayValues &v, Position p = {}): m_type(Array), m_value(v), m_position(p) {}
     /**
      * @brief Constructs an object JSON value
      * 
      * @param l list of (key, value) couples
      */
-    Value(std::initializer_list<std::tuple<std::string, Value>> l) : m_type(Object), m_value(ObjectValues{})
+    Value(std::initializer_list<std::tuple<std::string, Value>> l) : m_type(Object), m_value(ObjectValues{}), m_position()
     {
         auto &content = get<Object>();
         for (auto &p : l) {
@@ -240,13 +281,13 @@ public:
      * 
      * @param o JSON value
      */
-    Value(const Value &o) : m_type(o.m_type), m_value(o.m_value) {}
+    Value(const Value &o) : m_type(o.m_type), m_value(o.m_value), m_position(o.m_position) {}
     /**
      * @brief Move constructor
      * 
      * @param o JSON value
      */
-    Value(Value &&o) : m_type(o.m_type), m_value(std::move(o.m_value)) {}
+    Value(Value &&o) : m_type(o.m_type), m_value(std::move(o.m_value)), m_position(o.m_position) {}
     
     
     /**
@@ -258,6 +299,7 @@ public:
     Value & operator=(const Value &o) {
         m_type = o.m_type;
         m_value = o.m_value;
+        m_position = o.m_position;
         return *this;
     }
     /**
@@ -269,6 +311,7 @@ public:
     Value & operator=(Value &&o) {
         m_type = o.m_type;
         m_value = std::move(o.m_value);
+        m_position = o.m_position;
         return *this;
     }
     
@@ -340,6 +383,22 @@ public:
      */
     Type get_type() const {
         return m_type;
+    }
+    
+    /**
+     * @brief Returns the position at which the value was parsed
+     * 
+     * @return Position
+     */
+    Position get_position() const {
+        return m_position;
+    }
+    
+    /**
+     * @brief Set the position at which the value was parsed
+     */
+    void set_position(Position p) {
+        m_position = p;
     }
 
     
@@ -470,6 +529,7 @@ public:
 private:
     Type m_type;        ///< data type of this value
     std::any m_value;   ///< Actual value, whose type is TypeToNative<m_type>::type
+    Position m_position;    ///< Position in the input stream at which the value was parsed
     
     /* Compare 2 any values with the same data type */
     /**

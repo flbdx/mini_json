@@ -22,9 +22,9 @@
 #include <string_view>
 #include <exception>
 
-namespace MiniJSON {
+#include "mini_json_value.h"
 
-class Value;
+namespace MiniJSON {
 
 /**
     * @brief Thrown when the input string is not a valid UTF-8 sequence
@@ -53,12 +53,11 @@ public:
     /**
      * @brief Build a new MalFormedException
      * 
-     * @param ln line number
-     * @param lp line position
+     * @param p position
      * @param info message
      */
-    MalFormedException(uint64_t ln, uint64_t lp, const std::string &info = {}) : m_msg() {
-        m_msg = std::string("Format error line ") + std::to_string(ln) + " at position " + std::to_string(lp);
+    MalFormedException(Position p, const std::string &info = {}) : m_msg() {
+        m_msg = std::string("Format error line ") + std::to_string(p.m_line_number) + " at position " + std::to_string(p.m_line_pos) + ", offset " + std::to_string(p.m_offset);
         if (!info.empty()) {
             m_msg += ": " + info;
         }
@@ -105,7 +104,7 @@ class Parser {
         /**
          * @brief Construct a new parser
          */
-        Parser() : m_sv(), m_line_number(0), m_line_pos(0), m_depth(0), m_max_depth(1024) {
+        Parser() : m_sv(), m_position(), m_depth(0), m_max_depth(1024) {
     }
 
 
@@ -141,8 +140,7 @@ class Parser {
     
 private:
     std::string_view m_sv;      ///< remaining input data
-    uint64_t m_line_number;     ///< current line number, from 1
-    uint64_t m_line_pos;        ///< current line position, from 0
+    Position m_position;        ///< current position in the stream
     uint64_t m_depth;           ///< current recursion depth
     uint64_t m_max_depth;       ///< configured maximum recursion depth
 
@@ -153,8 +151,7 @@ private:
      */
     void init(const std::string &input) {
         m_sv = std::string_view{input};
-        m_line_number = 1;
-        m_line_pos = 0;
+        m_position = {1, 1, 0};
         m_depth = 0;
     }
 
